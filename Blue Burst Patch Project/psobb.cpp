@@ -78,6 +78,10 @@
 #include "initlist.h"
 #endif
 
+#ifdef PATCH_FARLLA_VACUUM
+#include "farlla_vacuum.h"
+#endif
+
 void PSOBB()
 {
     // By default, keep the game guard patch enabled
@@ -135,6 +139,10 @@ void PSOBB()
 
 #ifdef PATCH_EDITORS
     ApplyEditorPatch();
+#endif
+
+#ifdef PATCH_FARLLA_VACUUM
+    ApplyFarllaVacuumPatch();
 #endif
 
 #ifdef PATCH_HOOKS
