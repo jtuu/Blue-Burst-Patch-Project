@@ -82,6 +82,10 @@
 #include "farlla_vacuum.h"
 #endif
 
+#ifdef PATCH_TALISMAN
+#include "talisman.h"
+#endif
+
 void PSOBB()
 {
     // By default, keep the game guard patch enabled
@@ -143,6 +147,10 @@ void PSOBB()
 
 #ifdef PATCH_FARLLA_VACUUM
     ApplyFarllaVacuumPatch();
+#endif
+
+#ifdef PATCH_TALISMAN
+    ApplyTalismanPatch();
 #endif
 
 #ifdef PATCH_HOOKS

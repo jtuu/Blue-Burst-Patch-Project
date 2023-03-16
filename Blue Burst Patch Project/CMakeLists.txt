@@ -30,6 +30,7 @@ define_optional_patch(PATCH_HOOKS)
 define_optional_patch(PATCH_KEYBOARD_HOOKS PATCH_HOOKS)
 define_optional_patch(PATCH_EDITORS PATCH_KEYBOARD_HOOKS)
 define_optional_patch(PATCH_FARLLA_VACUUM PATCH_KEYBOARD_HOOKS PATCH_HOOKS USE_NEWGFX PATCH_INITLISTS)
+define_optional_patch(PATCH_TALISMAN)
 
 # This makes the lpVtbl field of COM objects accessible in Wine's headers
 add_compile_definitions(CINTERFACE)
@@ -73,6 +74,7 @@ add_library(${PROJECT_NAME} SHARED
     shop.cpp
     slow_gibbles.cpp
     farlla_vacuum.cpp
+    talisman.cpp
     
     newgfx/animation.cpp
     newgfx/bone.cpp
