@@ -86,6 +86,10 @@
 #include "talisman.h"
 #endif
 
+#ifdef PATCH_NEWMAP
+#include "newmap.h"
+#endif
+
 void PSOBB()
 {
     // By default, keep the game guard patch enabled
@@ -151,6 +155,10 @@ void PSOBB()
 
 #ifdef PATCH_TALISMAN
     ApplyTalismanPatch();
+#endif
+
+#ifdef PATCH_NEWMAP
+    ApplyNewMapPatch();
 #endif
 
 #ifdef PATCH_HOOKS
