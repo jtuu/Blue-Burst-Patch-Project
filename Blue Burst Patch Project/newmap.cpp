@@ -5,6 +5,7 @@
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 
+#include <array>
 #include <cstdint>
 #include <cstdlib>
 #include <string>
@@ -425,13 +426,133 @@ CollisionMeshContainer** __cdecl GetTestCrel(const char* filename, void* dst)
     return nodes;
 }
 
-void ApplyNewMapPatch()
+void PatchMapAssetGetters()
 {
     PatchCALL(0x00805b30, 0x00805b35, (int) LoadMiniMap);
-
     PatchCALL(0x0080a239, 0x0080a23e, (int) GetTestNrel);
-
     PatchCALL(0x0080a46f, 0x0080a474, (int) GetTestCrel);
+}
+
+#pragma pack(push, 1)
+struct MapDesignation
+{
+    uint32_t map_id;
+    uint32_t map_variant;
+    uint32_t object_set;
+};
+
+struct MapAssetPrefixes
+{
+    struct Prefixes {
+        const char* basename;
+        const char* variant_names[];
+    }* prefixes;
+    uint32_t variant_count;
+};
+#pragma pack(pop)
+
+const size_t VANILLA_FLOOR_COUNT = 18;
+const size_t VANILLA_MAP_COUNT = 47;
+auto vanillaFloorMapDesignations = reinterpret_cast<MapDesignation*>(0x00aafce0);
+auto vanillaMapAssetPrefixes = reinterpret_cast<MapAssetPrefixes*>(0x00a116e0);
+auto vanillaUltMapAssetPrefixes = reinterpret_cast<MapAssetPrefixes*>(0x00a114e0);
+
+const size_t CUSTOM_MAP_SET_COUNT = 1;
+MapAssetPrefixes::Prefixes snowMapAssetPrefixes = {
+    "map_snow01",
+    "map_snow01"
+};
+std::array<std::array<MapAssetPrefixes, VANILLA_MAP_COUNT>, CUSTOM_MAP_SET_COUNT> customMapSets =
+{
+    // Map sets
+    {
+        // Asset prefixes of maps in map set
+        MapAssetPrefixes { reinterpret_cast<MapAssetPrefixes::Prefixes*>(0x00a11d48), 1 }, // Use vanilla Pioneer 2
+        MapAssetPrefixes { &snowMapAssetPrefixes, 1 }, // Use Forest 1 slot for snow map
+    }
+};
+
+auto IsUltEp1 = reinterpret_cast<bool (__cdecl *)()>(0x0078b220);
+
+/**
+ * @brief The map set value is set from the custom opcode and reset from Before_InitEpisodeMaps.
+ *  Vanilla maps are considered to be the 0th map set.
+ *  Custom map sets will use the objects and enemies from the matching vanilla maps, but can have custom map geometry files.
+ */
+auto currentMapSet = 0;
+
+const MapAssetPrefixes::Prefixes* __cdecl GetMapAssetPrefixes(uint32_t map)
+{
+    if (currentMapSet == 0)
+    {
+        // Do vanilla behavior
+        if (IsUltEp1()) return vanillaUltMapAssetPrefixes[map].prefixes;
+        return vanillaMapAssetPrefixes[map].prefixes;
+    }
+
+    // Get map asset prefixes from custom map set
+    auto customMapSetIndex = currentMapSet - 1;
+    if (customMapSets.size() <= customMapSetIndex) return nullptr;
+    const auto& mapSet = customMapSets[customMapSetIndex];
+    if (mapSet.size() <= map) return nullptr;
+    return mapSet[map].prefixes;
+}
+
+__attribute__((regparm(1))) // Take argument in EAX
+uint32_t __cdecl Before_InitEpisodeMaps(uint32_t episode)
+{
+    // This gets called when entering or leaving a game or the lobby and from set_episode opcode
+    // (but not when going to main menu, but will get called when entering lobby again).
+    // Seems like a good place to reset the map set.
+    currentMapSet = 0;
+    // Code we overwrote
+    *reinterpret_cast<uint32_t*>(0x00aafdb8) = episode;
+    // Return to original code
+    return episode;
+}
+
+using OpcodeSetupFn = void (__cdecl*)(uint32_t opcode);
+using OpcodeFn = void*;
+
+#pragma pack(push, 1)
+struct OpcodeHandler
+{
+    OpcodeSetupFn setupFn;
+    OpcodeFn opcodeFn;
+};
+#pragma pack(pop)
+
+auto opcodeTable = reinterpret_cast<OpcodeHandler*>(0x009ccc00);
+auto SetupOpcodeOperand1 = reinterpret_cast<OpcodeSetupFn>(0x006b1040);
+
+void SetOpcode(uint16_t opcode, OpcodeSetupFn setupFn, OpcodeFn opcodeFn)
+{
+    uint8_t firstByte = opcode & 0xff;
+    uint8_t secondByte = opcode >> 8;
+    uint32_t opcodeIndex = firstByte;
+
+    if (secondByte == 0xf8) opcodeIndex += 0x100;
+    else if (secondByte == 0xf9) opcodeIndex += 0x200;
+
+    opcodeTable[opcodeIndex].setupFn = setupFn;
+    opcodeTable[opcodeIndex].opcodeFn = opcodeFn;
+}
+
+void __cdecl NewOpcodeMapSet(uint8_t mapSet)
+{
+    currentMapSet = mapSet;
+}
+
+void PatchMapDesignateOpcode()
+{
+    PatchJMP(0x0080bee8, 0x0080bf11, (int) GetMapAssetPrefixes);
+    PatchCALL(0x0080c7a0, 0x0080c7a5, (int) Before_InitEpisodeMaps);
+    SetOpcode(0xf962, SetupOpcodeOperand1, (void*) NewOpcodeMapSet);
+}
+
+void ApplyNewMapPatch()
+{
+    PatchMapDesignateOpcode();
 }
 
 #endif // PATCH_NEWMAP
