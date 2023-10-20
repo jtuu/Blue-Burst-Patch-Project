@@ -31,7 +31,7 @@ define_optional_patch(PATCH_KEYBOARD_HOOKS PATCH_HOOKS)
 define_optional_patch(PATCH_EDITORS PATCH_KEYBOARD_HOOKS)
 define_optional_patch(PATCH_FARLLA_VACUUM PATCH_KEYBOARD_HOOKS PATCH_HOOKS USE_NEWGFX PATCH_INITLISTS)
 define_optional_patch(PATCH_TALISMAN)
-define_optional_patch(PATCH_NEWMAP PATCH_KEYBOARD_HOOKS PATCH_HOOKS)
+define_optional_patch(PATCH_NEWMAP PATCH_KEYBOARD_HOOKS PATCH_HOOKS PATCH_INITLISTS)
 
 # This makes the lpVtbl field of COM objects accessible in Wine's headers
 add_compile_definitions(CINTERFACE)
@@ -77,6 +77,8 @@ add_library(${PROJECT_NAME} SHARED
     farlla_vacuum.cpp
     talisman.cpp
     newmap.cpp
+    map_object.cpp
+    map_object_cloud.cpp
     
     newgfx/animation.cpp
     newgfx/bone.cpp
@@ -105,7 +107,7 @@ else()
     add_compile_options(-Wall)
 endif()
 
-target_include_directories(${PROJECT_NAME} PRIVATE ".")
+target_include_directories(${PROJECT_NAME} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 
 # Force 32-bit target
 set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS -m32 LINK_FLAGS -m32)
